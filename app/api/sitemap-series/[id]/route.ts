@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb-client';
 import { getBaseUrlForBuild } from '@/lib/domain';
+import { TV_SERIES_IDS } from '@/data/tvSeriesIds';
 
 const DOMAIN = getBaseUrlForBuild();
 const SERIES_PER_SITEMAP = 1000; // 1k per sitemap batch
 
-// Helper function to create series slug
-function createSeriesSlug(name: string, id: string | number): string {
+const TMDB_API_KEY = 'b31d2e5f33b74ffa7b3b483ff353f760';
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+
+// Helper function to create series slug (same pattern as series pages)
+function createSeriesSlug(name: string, tmdbId: number): string {
   const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return `${slug}-${id}`;
+  return `${slug}-${tmdbId}`;
 }
 
 export async function GET(
@@ -26,50 +29,48 @@ export async function GET(
       return new NextResponse('Invalid sitemap number', { status: 400 });
     }
 
-    // Connect to MongoDB
-    const client = await clientPromise;
-    if (!client) {
-      return new NextResponse('Sitemap not available', { status: 404 });
-    }
-    const db = client.db('moviesDB');
-    const seriesCollection = db.collection('tvSeries');
-    
-    // Calculate start and end indices for this sitemap
+    const totalSeries = TV_SERIES_IDS.length;
     const startIndex = (sitemapNumber - 1) * SERIES_PER_SITEMAP;
-    
-    // Check total count
-    const totalSeries = await seriesCollection.countDocuments();
-    
-    // Check if sitemap number is valid
+    const endIndex = Math.min(startIndex + SERIES_PER_SITEMAP, totalSeries);
+
     if (startIndex >= totalSeries) {
       return new NextResponse('Sitemap not found', { status: 404 });
     }
-    
-    // Get series for this chunk with pagination
-    const seriesList = await seriesCollection
-      .find({}, { projection: { name: 1, tmdb_id: 1, imdb_id: 1 } })
-      .sort({ tmdb_id: 1 })
-      .skip(startIndex)
-      .limit(SERIES_PER_SITEMAP)
-      .toArray();
-    
-    console.log(`Generating series sitemap ${sitemapNumber}: Series ${startIndex}-${startIndex + seriesList.length} (${seriesList.length} series)`);
-    
+
+    const seriesIdsChunk = TV_SERIES_IDS.slice(startIndex, endIndex);
+    console.log(`Generating series sitemap ${sitemapNumber}: Series ${startIndex}-${endIndex} (${seriesIdsChunk.length} series)`);
+
     const lastmod = new Date().toISOString();
-    
-    // Generate sitemap XML
-    const urlEntries = seriesList
-      .filter(series => series.name && (series.tmdb_id || series.imdb_id))
-      .map(series => {
-        const slug = createSeriesSlug(series.name, series.tmdb_id || series.imdb_id);
-        return `  <url>
+
+    // Resolve TMDB ID + name for each IMDB series via TMDB Find API
+    const urlEntriesArray = await Promise.all(
+      seriesIdsChunk.map(async (imdbId) => {
+        try {
+          const findRes = await fetch(
+            `${TMDB_BASE_URL}/find/${imdbId}?api_key=${TMDB_API_KEY}&external_source=imdb_id`
+          );
+          if (!findRes.ok) return null;
+          const findData = await findRes.json();
+          const tvResult = (findData.tv_results && findData.tv_results[0]) || null;
+          if (!tvResult) return null;
+
+          const name = tvResult.name || `TV Series ${imdbId}`;
+          const tmdbId = tvResult.id;
+          const slug = createSeriesSlug(name, tmdbId);
+          return `  <url>
     <loc>${DOMAIN}/${slug}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`;
+        } catch (err) {
+          console.error(`Error processing series ${imdbId}:`, err);
+          return null;
+        }
       })
-      .join('\n');
+    );
+
+    const urlEntries = urlEntriesArray.filter(Boolean).join('\n');
     
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
