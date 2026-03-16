@@ -239,7 +239,8 @@ function TVSeriesDisplay({ activeCategory, categoryConfig }: { activeCategory: s
 
   return (
     <div>
-      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
+      {/* Mobile: 2 columns (bigger posters like 123movies), Desktop: dense grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
         {displaySeries.map((series, index) => (
           <Link
             key={`tv-${String(series.tmdbId ?? series.imdbId ?? index)}-${index}`}
@@ -658,7 +659,7 @@ export default function HomePage() {
 
         {/* Movies Grid - 7 lines */}
         {loading ? (
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
             {Array.from({ length: 14 }).map((_, i) => (
               <div key={i} className="aspect-[2/3] bg-gray-800 rounded animate-pulse"></div>
             ))}
@@ -667,7 +668,8 @@ export default function HomePage() {
           <TVSeriesDisplay activeCategory={activeCategory} categoryConfig={categoryConfig} />
         ) : (
           <>
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2">
+            {/* Movies grid: mobile 2 columns, desktop dense – similar feel to 123movies */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
               {allMovies.slice(0, movieDisplayCount).map((movie, index) => (
                 <Link
                   key={`${movie.imdb_id}-${index}`}
