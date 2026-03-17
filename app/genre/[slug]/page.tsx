@@ -3,8 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { getMoviesByImdbIds } from "@/api/tmdb";
-import { BULK_MOVIE_IDS } from "@/data/bulkMovieIds";
 import type { Movie } from "@/api/tmdb";
 import { generateMovieUrl } from "@/lib/slug";
 import Head from "next/head";
@@ -15,18 +13,31 @@ interface GenrePageProps {
   }>;
 }
 
-const getGenreIndex = (slug: string): number => {
-  const genreMap: {[key: string]: number} = {
-    'action': 0, 'action-adventure': 1, 'adventure': 2, 'animation': 3,
-    'biography': 4, 'comedy': 5, 'costume': 6, 'crime': 7,
-    'documentary': 8, 'drama': 9, 'family': 10, 'fantasy': 11,
-    'film-noir': 12, 'game-show': 13, 'history': 14, 'horror': 15,
-    'romance': 16, 'kungfu': 17, 'music': 18, 'musical': 19,
-    'mystery': 20, 'mythological': 21, 'news': 22, 'psychological': 23,
-    'reality': 24, 'reality-tv': 25, 'sci-fi': 26, 'sci-fi-fantasy': 27,
-    'science-fiction': 28, 'short': 29
+// TMDB genre ids (from processed batch data)
+const getGenreId = (slug: string): number | null => {
+  const map: Record<string, number> = {
+    "action": 28,
+    "action-adventure": 28,
+    "adventure": 12,
+    "animation": 16,
+    "comedy": 35,
+    "crime": 80,
+    "documentary": 99,
+    "drama": 18,
+    "family": 10751,
+    "fantasy": 14,
+    "history": 36,
+    "horror": 27,
+    "music": 10402,
+    "mystery": 9648,
+    "romance": 10749,
+    "science-fiction": 878,
+    "sci-fi": 878,
+    "thriller": 53,
+    "war": 10752,
+    "western": 37,
   };
-  return genreMap[slug] || 0;
+  return map[slug] ?? null;
 };
 
 const getGenreKeywords = (slug: string): string[] => {
@@ -97,6 +108,7 @@ export default function GenrePage({ params }: GenrePageProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [genreId, setGenreId] = useState<number | null>(null);
 
   useEffect(() => {
     loadGenreMovies();
@@ -106,17 +118,26 @@ export default function GenrePage({ params }: GenrePageProps) {
     try {
       const { slug: slugParam } = await params;
       setSlug(slugParam);
-      
-      // Load first 7 movies for this genre
-      const genreIndex = getGenreIndex(slugParam);
-      const startIndex = 1000 + (genreIndex * 200);
-      const endIndex = startIndex + 7;
-      const movieIds = BULK_MOVIE_IDS.slice(startIndex, endIndex);
-      
-      const moviesData = await getMoviesByImdbIds(movieIds);
-      setMovies(moviesData);
-      setCurrentPage(1);
-      setHasMore(movieIds.length === 7);
+
+      const gid = getGenreId(slugParam);
+      setGenreId(gid);
+      if (!gid) {
+        setMovies([]);
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`/api/movies/genre?genreId=${gid}&page=1&limit=21`);
+      const data = await response.json();
+      if (response.ok) {
+        setMovies(data.movies || []);
+        setCurrentPage(1);
+        setHasMore(!!data.pagination?.hasNextPage);
+      } else {
+        setMovies([]);
+        setHasMore(false);
+      }
     } catch (error) {
       console.error('Error loading genre movies:', error);
     }
@@ -128,18 +149,21 @@ export default function GenrePage({ params }: GenrePageProps) {
     
     setLoadingMore(true);
     try {
-      const genreIndex = getGenreIndex(slug);
-      const startIndex = 1000 + (genreIndex * 200) + (currentPage * 7);
-      const endIndex = startIndex + 7;
-      const movieIds = BULK_MOVIE_IDS.slice(startIndex, endIndex);
-      
-      if (movieIds.length === 0) {
+      if (!genreId) {
         setHasMore(false);
+        setLoadingMore(false);
+        return;
+      }
+      const nextPage = currentPage + 1;
+      const response = await fetch(`/api/movies/genre?genreId=${genreId}&page=${nextPage}&limit=21`);
+      const data = await response.json();
+      if (response.ok) {
+        const newMovies = data.movies || [];
+        setMovies(prev => [...prev, ...newMovies]);
+        setCurrentPage(nextPage);
+        setHasMore(!!data.pagination?.hasNextPage);
       } else {
-        const moviesData = await getMoviesByImdbIds(movieIds);
-        setMovies(prev => [...prev, ...moviesData]);
-        setCurrentPage(prev => prev + 1);
-        setHasMore(movieIds.length === 7);
+        setHasMore(false);
       }
     } catch (error) {
       console.error('Error loading more movies:', error);

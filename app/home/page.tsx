@@ -11,6 +11,7 @@ import TVNavbar from "@/components/TVNavbar";
 import type { Movie } from "@/api/tmdb";
 import { generateMovieUrl } from "@/lib/slug";
 import { getTVImageUrl } from "@/api/tmdb-tv";
+import SiteLogo from "@/components/SiteLogo";
 
 // TV Search Modal Component
 function TVSearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -221,7 +222,7 @@ function TVSeriesDisplay({ activeCategory, categoryConfig }: { activeCategory: s
         <h2 className="text-2xl font-bold text-white mb-2">Loading TV Series...</h2>
         <p className="text-gray-400">Processing series data, please wait...</p>
         <div className="mt-4 w-64 h-2 bg-gray-700 rounded-full mx-auto overflow-hidden">
-          <div className="h-full bg-purple-600 rounded-full animate-pulse" style={{width: '60%'}}></div>
+          <div className="h-full bg-[#3fae2a] rounded-full animate-pulse" style={{width: '60%'}}></div>
         </div>
       </div>
     );
@@ -259,15 +260,15 @@ function TVSeriesDisplay({ activeCategory, categoryConfig }: { activeCategory: s
                     unoptimized={true}
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center">
+                  <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-4xl mb-2">📺</div>
                       <div className="text-white text-sm font-semibold">TV Series</div>
                     </div>
                   </div>
                 )}
-                {/* TV Badge */}
-                <div className="absolute top-2 left-2 bg-purple-600 bg-opacity-90 text-white text-xs px-2 py-1 rounded">
+                {/* TV Badge - same green as site */}
+                <div className="absolute top-2 left-2 bg-[#3fae2a] bg-opacity-90 text-white text-xs px-2 py-1 rounded">
                   TV
                 </div>
                 {/* Rating Badge */}
@@ -278,7 +279,7 @@ function TVSeriesDisplay({ activeCategory, categoryConfig }: { activeCategory: s
                 )}
                 {/* Episode Count Badge */}
                 {series.episodeCount > 0 && (
-                  <div className="absolute bottom-2 right-2 bg-purple-600 bg-opacity-90 text-white text-xs px-2 py-1 rounded">
+                  <div className="absolute bottom-2 right-2 bg-[#3fae2a] bg-opacity-90 text-white text-xs px-2 py-1 rounded">
                     {series.episodeCount} eps
                   </div>
                 )}
@@ -306,10 +307,10 @@ function TVSeriesDisplay({ activeCategory, categoryConfig }: { activeCategory: s
       {/* Load More Button */}
       {displayCount < categorySeries.length && (
         <div className="text-center mt-6">
-          <button
-            onClick={() => setDisplayCount(prev => Math.min(prev + 7, categorySeries.length))}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-          >
+            <button
+              onClick={() => setDisplayCount(prev => Math.min(prev + 7, categorySeries.length))}
+              className="bg-[#3fae2a] hover:bg-[#35a024] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
             Load More ({categorySeries.length - displayCount} remaining)
           </button>
         </div>
@@ -324,6 +325,11 @@ export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("Suggestions");
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
   const [movieDisplayCount, setMovieDisplayCount] = useState(14); // Load 14 movies at a time
+  const [latestMovies, setLatestMovies] = useState<Movie[]>([]);
+  const [latestTvSeries, setLatestTvSeries] = useState<any[]>([]);
+  const [popularTvSeries, setPopularTvSeries] = useState<any[]>([]);
+  const [featuredTvSeries, setFeaturedTvSeries] = useState<any[]>([]);
+  const [itemsPerRow, setItemsPerRow] = useState(12);
   
   // Mode switching state - Default to MOVIES
   const [currentMode, setCurrentMode] = useState<'movies' | 'tv'>('movies');
@@ -369,6 +375,62 @@ export default function HomePage() {
     // Auto-refresh disabled for better performance
     // const interval = setInterval(loadAllCategories, 60000);
     // return () => clearInterval(interval);
+  }, []);
+
+  // Keep homepage sections to exactly 2 rows like reference site.
+  // We approximate columns by viewport width.
+  useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth;
+      // Bigger cards => fewer columns
+      if (w >= 1280) return 10; // xl
+      if (w >= 1024) return 8; // lg
+      if (w >= 768) return 6; // md
+      if (w >= 640) return 4; // sm
+      return 2; // mobile
+    };
+    const apply = () => setItemsPerRow(compute());
+    apply();
+    window.addEventListener("resize", apply);
+    return () => window.removeEventListener("resize", apply);
+  }, []);
+
+  // Load "Latest Movies" and "Latest TV-Series" sections like reference site
+  useEffect(() => {
+    (async () => {
+      try {
+        // Fetch more than we render (we render exactly 2 rows)
+        const latestRes = await fetch(`/api/movies/latest?category=latest&limit=60`);
+        const latestData = await latestRes.json();
+        if (latestRes.ok && Array.isArray(latestData.movies)) {
+          setLatestMovies(latestData.movies);
+        }
+      } catch {}
+
+      try {
+        const tvRes = await fetch(`/api/tv-series-db?limit=60&sortBy=first_air_date&sortOrder=desc`);
+        const tvData = await tvRes.json();
+        if (tvRes.ok && tvData?.success && Array.isArray(tvData.data)) {
+          setLatestTvSeries(tvData.data);
+        }
+      } catch {}
+
+      try {
+        const tvRes = await fetch(`/api/tv-series-db?limit=60&sortBy=vote_average&sortOrder=desc&minRating=7.0`);
+        const tvData = await tvRes.json();
+        if (tvRes.ok && tvData?.success && Array.isArray(tvData.data)) {
+          setPopularTvSeries(tvData.data);
+        }
+      } catch {}
+
+      try {
+        const tvRes = await fetch(`/api/tv-series-db?limit=60&sortBy=vote_average&sortOrder=desc&minRating=8.0`);
+        const tvData = await tvRes.json();
+        if (tvRes.ok && tvData?.success && Array.isArray(tvData.data)) {
+          setFeaturedTvSeries(tvData.data);
+        }
+      } catch {}
+    })();
   }, []);
 
   // Mode switching functions
@@ -452,11 +514,11 @@ export default function HomePage() {
           console.log(`✅ ${category.name}: ${data.movies.length} movies loaded`);
           categoriesData[category.name] = data.movies;
         } else {
-          console.log(`⚠️ ${category.name}: Using fallback method - loading movie IDs dynamically`);
-          // Final fallback - dynamic import to avoid loading 1.4MB upfront
-          const { BULK_MOVIE_IDS } = await import('@/data/bulkMovieIds');
-          const movieIds = BULK_MOVIE_IDS.slice(category.startIndex, category.startIndex + category.count);
-          const moviesData = await getMoviesByImdbIds(movieIds);
+          console.log(`⚠️ ${category.name}: Using fallback - fetching slice from API (no client big file)`);
+          const res = await fetch(`/api/movies/list?offset=${category.startIndex}&limit=${category.count}&order=desc`);
+          const listData = await res.json();
+          const movieIds = (listData.imdb_ids || []) as string[];
+          const moviesData = movieIds.length ? await getMoviesByImdbIds(movieIds) : [];
           categoriesData[category.name] = moviesData;
         }
       }
@@ -484,267 +546,414 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-[#f2f2f2]">
 
-      {/* Hero Section */}
-      <section className="relative h-96 bg-gradient-to-r from-gray-900 to-black overflow-hidden">
-        <div className="absolute inset-0">
-          <Image
-            src="https://image.tmdb.org/t/p/original/1XDDXPXGiI8id7MrUxK36ke7gkX.jpg"
-            alt="Featured Movie"
-            fill
-            className="object-cover opacity-30"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
-        </div>
-        
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-              {currentMode === 'movies' ? 'Watch Movies Online' : 'Watch TV Seasons Online'}
-            </h1>
-            <p className="text-xl text-gray-300 mb-6">
-              {currentMode === 'movies' 
-                ? 'Discover thousands of movies. Stream in HD quality for free.'
-                : 'Discover amazing TV seasons and episodes. Stream in HD quality for free.'
-              }
-            </p>
-            <div className="flex space-x-4">
+      {/* Hero (reference-like card slider look) */}
+      <div className="w-full pt-0">
+        <div className="bg-white shadow rounded-b overflow-hidden w-full">
+          <div className="relative h-[220px] md:h-[320px]">
+            <Image
+              src="https://image.tmdb.org/t/p/original/1XDDXPXGiI8id7MrUxK36ke7gkX.jpg"
+              alt="Featured"
+              fill
+              className="object-cover"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+            <div className="absolute bottom-6 left-6 hidden md:block max-w-xl">
+              <h2 className="text-3xl font-bold text-white mb-2">
+                {currentMode === "movies" ? "Featured Movie" : "Featured TV"}
+              </h2>
+              <p className="text-sm text-gray-200 line-clamp-2 mb-3">
+                {currentMode === "movies"
+                  ? "Watch HD Movies Online Free"
+                  : "Watch HD TV Series Online Free"}
+              </p>
+              {/* Movies / TV switch (keep as before) */}
+              <div className="flex items-center gap-3 mb-3">
+                <button
+                  onClick={switchToMovies}
+                  className={`px-4 py-2 rounded font-semibold text-sm transition-colors ${
+                    currentMode === "movies"
+                      ? "bg-[#79c142] text-white"
+                      : "bg-white/90 text-gray-900 hover:bg-white"
+                  }`}
+                >
+                  Movies
+                </button>
+                <button
+                  onClick={switchToTV}
+                  className={`px-4 py-2 rounded font-semibold text-sm transition-colors ${
+                    currentMode === "tv"
+                      ? "bg-[#79c142] text-white"
+                      : "bg-white/90 text-gray-900 hover:bg-white"
+                  }`}
+                >
+                  TV Series
+                </button>
+              </div>
+              <Link
+                href={currentMode === "movies" ? "/movies" : "/series"}
+                className="inline-block bg-[#79c142] hover:bg-[#6bb23a] text-white px-5 py-2 rounded font-semibold"
+              >
+                Watch Now
+              </Link>
+            </div>
+
+            {/* Mobile switch (visible under hero on small screens) */}
+            <div className="absolute bottom-4 left-4 right-4 md:hidden flex items-center justify-between gap-3">
               <button
                 onClick={switchToMovies}
-                className={`px-8 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 ${
-                  currentMode === 'movies'
-                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/25'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                className={`flex-1 py-2 rounded font-semibold text-sm transition-colors ${
+                  currentMode === "movies"
+                    ? "bg-[#79c142] text-white"
+                    : "bg-white/90 text-gray-900"
                 }`}
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <rect x="2" y="3" width="20" height="18" rx="2"/>
-                  <path d="M7 3v18M17 3v18M2 9h20M2 15h20"/>
-                </svg>
-                <span>Movies</span>
+                Movies
               </button>
               <button
                 onClick={switchToTV}
-                className={`px-8 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 ${
-                  currentMode === 'tv'
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                className={`flex-1 py-2 rounded font-semibold text-sm transition-colors ${
+                  currentMode === "tv"
+                    ? "bg-[#79c142] text-white"
+                    : "bg-white/90 text-gray-900"
                 }`}
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <rect x="2" y="7" width="20" height="13" rx="2"/>
-                  <path d="M17 2l-5 5M7 2l5 5"/>
-                </svg>
-                <span>Seasons</span>
+                TV Series
               </button>
             </div>
-          </div>
-        </div>
-
-        {/* Slider Dots */}
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-2">
-          {[1, 2, 3, 4, 5].map((dot) => (
-            <div key={dot} className="w-2 h-2 bg-white rounded-full opacity-50"></div>
-          ))}
-        </div>
-      </section>
-
-      {/* Support Message */}
-      <div className="bg-gray-800 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-gray-300">Like and Share our website to support us.</p>
-        </div>
-      </div>
-
-      {/* Ad Banner */}
-      <div className="bg-blue-900 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-white">
-            Ads can be a pain, but they are our only way to maintain the server. Your patience is highly appreciated and we hope our service can be worth it.
-          </p>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        
-        {/* Category Buttons - Perfect Size & Alignment */}
-        <div className="flex flex-wrap justify-center items-center gap-3 mb-8">
-          {categoryConfig.map((category) => {
-            const isActive = activeCategory === category.name;
-
-            // Get icon for each category
-            const getCategoryIcon = (name: string) => {
-              if (currentMode === 'movies') {
-                switch (name) {
-                  case 'Suggestions': return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  );
-                  case 'Trending Now': return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
-                    </svg>
-                  );
-                  case 'Top Rated': return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                    </svg>
-                  );
-                  default: return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
-                    </svg>
-                  );
-                }
-              } else {
-                // TV Seasons categories
-                switch (name) {
-                  case 'New Releases': return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                    </svg>
-                  );
-                  case 'Popular': return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
-                    </svg>
-                  );
-                  case 'Featured': return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  );
-                  case 'Classic Shows': return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5l-1 1v1h8v-1l-1-1h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H3V5h18v10z"/>
-                    </svg>
-                  );
-                  case 'Trending': return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
-                    </svg>
-                  );
-                  default: return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5l-1 1v1h8v-1l-1-1h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H3V5h18v10z"/>
-                    </svg>
-                  );
-                }
-              }
-            };
-
-            return (
-              <button
-                key={category.name}
-                onClick={() => handleCategoryClick(category.name)}
-                className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg border min-w-[140px] h-[48px] ${
-                  isActive
-                    ? currentMode === 'movies' 
-                      ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-green-500/25 border-green-400 transform scale-105'
-                      : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-purple-500/25 border-purple-400 transform scale-105'
-                    : currentMode === 'movies'
-                      ? 'bg-gradient-to-r from-green-700 to-green-800 text-green-200 hover:from-green-600 hover:to-green-700 hover:text-white border-green-600 hover:border-green-500 hover:transform hover:scale-105'
-                      : 'bg-gradient-to-r from-purple-700 to-purple-800 text-purple-200 hover:from-purple-600 hover:to-purple-700 hover:text-white border-purple-600 hover:border-purple-500 hover:transform hover:scale-105'
-                }`}
-              >
-                {getCategoryIcon(category.name)}
-                <span className="font-semibold text-center whitespace-nowrap">{category.name}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Movies Grid - 7 lines */}
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
-            {Array.from({ length: 14 }).map((_, i) => (
-              <div key={i} className="aspect-[2/3] bg-gray-800 rounded animate-pulse"></div>
-            ))}
-          </div>
-        ) : currentMode === 'tv' ? (
-          <TVSeriesDisplay activeCategory={activeCategory} categoryConfig={categoryConfig} />
-        ) : (
-          <>
-            {/* Movies grid: mobile 2 columns, desktop dense – similar feel to 123movies */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
-              {allMovies.slice(0, movieDisplayCount).map((movie, index) => (
-                <Link
-                  key={`${movie.imdb_id}-${index}`}
-                  href={generateMovieUrl(movie.title, movie.imdb_id)}
-                  className="group relative"
-                >
-                  <div className="relative aspect-[2/3] bg-gray-800 rounded overflow-hidden shadow-lg group-hover:shadow-2xl transition-all duration-300">
-                    <Image
-                      src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '/placeholder.svg'}
-                      alt={movie.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/placeholder.svg';
-                      }}
-                    />
-                    
-                    {/* Rating Badge */}
-                    {movie.vote_average && movie.vote_average > 0 && (
-                      <div className="absolute top-0.5 right-0.5 bg-yellow-500 text-black text-xs font-bold px-1 py-0.5 rounded">
-                        {movie.vote_average.toFixed(1)}
-                      </div>
-                    )}
-
-                    {/* Play Button Overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center hover:bg-green-700 hover:scale-110 transition-all duration-200">
-                        <svg className="w-3 h-3 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Title below poster */}
-                  <h3 className="text-white text-xs mt-1 line-clamp-1 group-hover:text-green-400 transition-colors">
-                    {movie.title}
-                  </h3>
-                  <p className="text-gray-400 text-xs">
-                    {(movie as any).year || new Date(movie.release_date).getFullYear()}
-                  </p>
-                </Link>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+              {[1, 2, 3, 4, 5].map((dot) => (
+                <div key={dot} className="w-2 h-2 bg-white/80 rounded-full opacity-70" />
               ))}
             </div>
-            
-            {/* Load More Button for Movies */}
-            {movieDisplayCount < allMovies.length && (
-              <div className="text-center mt-8">
-                <button
-                  onClick={() => setMovieDisplayCount(prev => Math.min(prev + 14, allMovies.length))}
-                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors shadow-lg"
-                >
-                  Load More ({allMovies.length - movieDisplayCount} remaining)
-                </button>
-                <p className="text-gray-400 text-sm mt-2">
-                  Showing {movieDisplayCount} of {allMovies.length} movies in {activeCategory}
-                </p>
-              </div>
-            )}
-          </>
-        )}
+          </div>
+          <div className="px-4 py-3 text-sm text-gray-700">
+            Like and Share our website to support us.
+          </div>
+        </div>
+      </div>
+
+      {/* Ads notice (reference info box) */}
+      <div className="w-full mt-3 px-0">
+        <div className="bg-[#d1ecf1] text-[#0c5460] text-center rounded-none px-4 py-3 shadow">
+          Ads can be a pain, but they are our only way to maintain the server. Your patience is highly appreciated and we hope our service can be worth it.
+        </div>
+      </div>
+
+      <div className="w-full px-0 py-6">
+        {/* Sections like reference site */}
+        <div className="space-y-6 px-3 sm:px-4">
+          {currentMode === "movies" ? (
+            <>
+              {/* Suggestions */}
+              <section>
+                <div className="mb-3">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                    Suggestions
+                  </div>
+                </div>
+                {loading ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                    {Array.from({ length: itemsPerRow * 2 }).map((_, i) => (
+                      <div key={i} className="bg-white rounded shadow overflow-hidden">
+                        <div className="aspect-[2/3] bg-gray-200 animate-pulse" />
+                        <div className="h-8 bg-black/80" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                    {allMovies.slice(0, itemsPerRow * 2).map((movie, index) => (
+                      <Link
+                        key={`${movie.imdb_id}-${index}`}
+                        href={generateMovieUrl(movie.title, movie.imdb_id)}
+                        className="group block"
+                      >
+                        <div className="bg-white rounded shadow overflow-hidden">
+                          <div className="relative aspect-[2/3]">
+                            <Image
+                              src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/placeholder.svg"}
+                              alt={movie.title}
+                              fill
+                              className="object-cover"
+                              unoptimized={true}
+                            />
+                            <span className="absolute top-2 right-2 bg-[#79c142] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                              HD
+                            </span>
+                          </div>
+                          <div className="bg-black px-2 py-2">
+                            <div className="text-white text-xs font-semibold line-clamp-1">
+                              {movie.title}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Trending Now */}
+              <section>
+                <div className="mb-3">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                    Trending Now
+                  </div>
+                </div>
+                {loading ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                    {Array.from({ length: itemsPerRow * 2 }).map((_, i) => (
+                      <div key={i} className="bg-white rounded shadow overflow-hidden">
+                        <div className="aspect-[2/3] bg-gray-200 animate-pulse" />
+                        <div className="h-8 bg-black/80" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                    {(categories["Trending Now"] || []).slice(0, itemsPerRow * 2).map((movie, index) => (
+                      <Link
+                        key={`trending-${movie.imdb_id}-${index}`}
+                        href={generateMovieUrl(movie.title, movie.imdb_id)}
+                        className="group block"
+                      >
+                        <div className="bg-white rounded shadow overflow-hidden">
+                          <div className="relative aspect-[2/3]">
+                            <Image
+                              src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/placeholder.svg"}
+                              alt={movie.title}
+                              fill
+                              className="object-cover"
+                              unoptimized={true}
+                            />
+                            <span className="absolute top-2 right-2 bg-[#79c142] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                              HD
+                            </span>
+                          </div>
+                          <div className="bg-black px-2 py-2">
+                            <div className="text-white text-xs font-semibold line-clamp-1">
+                              {movie.title}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Top Rated */}
+              <section>
+                <div className="mb-3">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                    Top Rated
+                  </div>
+                </div>
+                {loading ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                    {Array.from({ length: itemsPerRow * 2 }).map((_, i) => (
+                      <div key={i} className="bg-white rounded shadow overflow-hidden">
+                        <div className="aspect-[2/3] bg-gray-200 animate-pulse" />
+                        <div className="h-8 bg-black/80" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                    {(categories["Top Rated"] || []).slice(0, itemsPerRow * 2).map((movie, index) => (
+                      <Link
+                        key={`top-${movie.imdb_id}-${index}`}
+                        href={generateMovieUrl(movie.title, movie.imdb_id)}
+                        className="group block"
+                      >
+                        <div className="bg-white rounded shadow overflow-hidden">
+                          <div className="relative aspect-[2/3]">
+                            <Image
+                              src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/placeholder.svg"}
+                              alt={movie.title}
+                              fill
+                              className="object-cover"
+                              unoptimized={true}
+                            />
+                            <span className="absolute top-2 right-2 bg-[#79c142] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                              HD
+                            </span>
+                          </div>
+                          <div className="bg-black px-2 py-2">
+                            <div className="text-white text-xs font-semibold line-clamp-1">
+                              {movie.title}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          ) : (
+            <>
+              {/* Latest TV-Series */}
+              <section>
+                <div className="mb-3">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                    Latest TV-Series
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                  {latestTvSeries.slice(0, itemsPerRow * 2).map((series: any, index: number) => {
+                    const name = series.name || `TV Series ${series.imdb_id || series.tmdb_id || index}`;
+                    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                    const href = `/${slug}-${series.tmdb_id || series.tmdbId || series.imdb_id || series.imdbId || ""}`;
+                    const eps =
+                      series?.seasons?.reduce?.((sum: number, s: any) => sum + (s?.episodes?.length || 0), 0) ||
+                      series?.episodeCount ||
+                      0;
+                    return (
+                      <Link key={`tv-latest-${series.tmdb_id ?? series.imdb_id ?? index}-${index}`} href={href} className="group block">
+                        <div className="bg-white rounded shadow overflow-hidden">
+                          <div className="relative aspect-[2/3]">
+                            <Image
+                              src={series.poster_path ? getTVImageUrl(series.poster_path, "w500") : "/placeholder.svg"}
+                              alt={name}
+                              fill
+                              className="object-cover"
+                              unoptimized={true}
+                            />
+                            <span className="absolute top-2 right-2 bg-[#79c142] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                              TV
+                            </span>
+                            {eps > 0 && (
+                              <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                                Eps {eps}
+                              </span>
+                            )}
+                          </div>
+                          <div className="bg-black px-2 py-2">
+                            <div className="text-white text-xs font-semibold line-clamp-1">
+                              {name}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Popular TV-Series */}
+              <section>
+                <div className="mb-3">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                    Popular TV-Series
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                  {popularTvSeries.slice(0, itemsPerRow * 2).map((series: any, index: number) => {
+                    const name = series.name || `TV Series ${series.imdb_id || series.tmdb_id || index}`;
+                    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                    const href = `/${slug}-${series.tmdb_id || series.tmdbId || series.imdb_id || series.imdbId || ""}`;
+                    const eps =
+                      series?.seasons?.reduce?.((sum: number, s: any) => sum + (s?.episodes?.length || 0), 0) ||
+                      series?.episodeCount ||
+                      0;
+                    return (
+                      <Link key={`tv-popular-${series.tmdb_id ?? series.imdb_id ?? index}-${index}`} href={href} className="group block">
+                        <div className="bg-white rounded shadow overflow-hidden">
+                          <div className="relative aspect-[2/3]">
+                            <Image
+                              src={series.poster_path ? getTVImageUrl(series.poster_path, "w500") : "/placeholder.svg"}
+                              alt={name}
+                              fill
+                              className="object-cover"
+                              unoptimized={true}
+                            />
+                            <span className="absolute top-2 right-2 bg-[#79c142] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                              TV
+                            </span>
+                            {eps > 0 && (
+                              <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                                Eps {eps}
+                              </span>
+                            )}
+                          </div>
+                          <div className="bg-black px-2 py-2">
+                            <div className="text-white text-xs font-semibold line-clamp-1">
+                              {name}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Featured TV-Series */}
+              <section>
+                <div className="mb-3">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                    Featured TV-Series
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+                  {featuredTvSeries.slice(0, itemsPerRow * 2).map((series: any, index: number) => {
+                    const name = series.name || `TV Series ${series.imdb_id || series.tmdb_id || index}`;
+                    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                    const href = `/${slug}-${series.tmdb_id || series.tmdbId || series.imdb_id || series.imdbId || ""}`;
+                    const eps =
+                      series?.seasons?.reduce?.((sum: number, s: any) => sum + (s?.episodes?.length || 0), 0) ||
+                      series?.episodeCount ||
+                      0;
+                    return (
+                      <Link key={`tv-featured-${series.tmdb_id ?? series.imdb_id ?? index}-${index}`} href={href} className="group block">
+                        <div className="bg-white rounded shadow overflow-hidden">
+                          <div className="relative aspect-[2/3]">
+                            <Image
+                              src={series.poster_path ? getTVImageUrl(series.poster_path, "w500") : "/placeholder.svg"}
+                              alt={name}
+                              fill
+                              className="object-cover"
+                              unoptimized={true}
+                            />
+                            <span className="absolute top-2 right-2 bg-[#79c142] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                              TV
+                            </span>
+                            {eps > 0 && (
+                              <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                                Eps {eps}
+                              </span>
+                            )}
+                          </div>
+                          <div className="bg-black px-2 py-2">
+                            <div className="text-white text-xs font-semibold line-clamp-1">
+                              {name}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
 
       </div>
 
-      {/* Footer */}
-      <footer className="bg-black text-white mt-16">
+      {/* Footer - 123moviesfree: green logo + same colors */}
+      <footer className="bg-[#0d0d0d] border-t border-[#2b2b2b] text-white mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Company Info */}
             <div className="space-y-4">
-              <div className="flex items-center">
-                <span className="text-3xl font-bold text-gray-800">123</span>
-                <span className="text-2xl font-normal text-gray-500 ml-1">MOVIES</span>
-                <div className="w-6 h-6 bg-green-600 rounded ml-2 flex items-center justify-center">
+              <div className="flex items-center gap-2">
+                <SiteLogo href="/" size="footer" tagline="" />
+                <div className="w-6 h-6 bg-[#3fae2a] rounded flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z"/>
                   </svg>
@@ -777,15 +986,15 @@ export default function HomePage() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Quick Links</h3>
               <ul className="space-y-2">
-                <li><Link href="/" className="text-gray-400 hover:text-white transition-colors text-sm">Home</Link></li>
-                <li><Link href="/movies" className="text-gray-400 hover:text-white transition-colors text-sm">All Movies</Link></li>
-                <li><Link href="/series-static" className="text-gray-400 hover:text-white transition-colors text-sm">TV Series</Link></li>
-                <li><Link href="/genres" className="text-gray-400 hover:text-white transition-colors text-sm">Genres</Link></li>
-                <li><Link href="/country" className="text-gray-400 hover:text-white transition-colors text-sm">Countries</Link></li>
+                <li><Link href="/" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">Home</Link></li>
+                <li><Link href="/movies" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">All Movies</Link></li>
+                <li><Link href="/series-static" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">TV Series</Link></li>
+                <li><Link href="/genres" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">Genres</Link></li>
+                <li><Link href="/country" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">Countries</Link></li>
                 <li>
                   <button 
                     onClick={() => setIsTVSearchOpen(true)}
-                    className="text-gray-400 hover:text-white transition-colors text-sm"
+                    className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm"
                   >
                     Search TV Series
                   </button>
@@ -797,20 +1006,20 @@ export default function HomePage() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Popular Genres</h3>
               <ul className="space-y-2">
-                <li><Link href="/genre/action" className="text-gray-400 hover:text-white transition-colors text-sm">Action</Link></li>
-                <li><Link href="/genre/comedy" className="text-gray-400 hover:text-white transition-colors text-sm">Comedy</Link></li>
-                <li><Link href="/genre/drama" className="text-gray-400 hover:text-white transition-colors text-sm">Drama</Link></li>
-                <li><Link href="/genre/horror" className="text-gray-400 hover:text-white transition-colors text-sm">Horror</Link></li>
-                <li><Link href="/genre/romance" className="text-gray-400 hover:text-white transition-colors text-sm">Romance</Link></li>
-                <li><Link href="/tv-genre/action" className="text-purple-400 hover:text-white transition-colors text-sm">TV Action</Link></li>
-                <li><Link href="/tv-genre/drama" className="text-purple-400 hover:text-white transition-colors text-sm">TV Drama</Link></li>
+                <li><Link href="/genre/action" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">Action</Link></li>
+                <li><Link href="/genre/comedy" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">Comedy</Link></li>
+                <li><Link href="/genre/drama" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">Drama</Link></li>
+                <li><Link href="/genre/horror" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">Horror</Link></li>
+                <li><Link href="/genre/romance" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">Romance</Link></li>
+                <li><Link href="/tv-genre/action" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">TV Action</Link></li>
+                <li><Link href="/tv-genre/drama" className="text-gray-400 hover:text-[#3fae2a] transition-colors text-sm">TV Drama</Link></li>
               </ul>
             </div>
 
           </div>
 
           {/* Bottom Bar */}
-          <div className="border-t border-gray-700 mt-8 pt-8">
+          <div className="border-t border-[#2b2b2b] mt-8 pt-8">
             <div className="text-center">
               <div className="text-gray-500 text-sm">
                 Made with ❤️ for movie lovers

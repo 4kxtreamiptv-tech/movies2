@@ -60,11 +60,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Sort movies by year (newest first), then by rating (highest first)
+    // Sort movies latest-first:
+    // - year desc
+    // - release_date desc (fallback to year)
+    // - rating desc
     allMovies.sort((a, b) => {
-      if (b.year !== a.year) {
-        return b.year - a.year;
-      }
+      const ay = a.year || 0;
+      const by = b.year || 0;
+      if (by !== ay) return by - ay;
+
+      const ad = a.release_date ? Date.parse(a.release_date) : Date.parse(`${ay}-01-01`);
+      const bd = b.release_date ? Date.parse(b.release_date) : Date.parse(`${by}-01-01`);
+      if (bd !== ad) return bd - ad;
+
       return (b.vote_average || 0) - (a.vote_average || 0);
     });
 
