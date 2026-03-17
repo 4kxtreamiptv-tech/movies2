@@ -553,11 +553,18 @@ export default function HomePage() {
           }
         }
         
-        setCategories(categoriesData);
+        // Never overwrite Suggestions if it was already set (e.g. from reference mapping)
+        setCategories((prev) => {
+          const next = { ...prev, ...categoriesData };
+          if (prev.Suggestions) {
+            next.Suggestions = prev.Suggestions;
+          }
+          return next;
+        });
         
-        // Set initial movies to suggestions
+        // Set initial movies to suggestions only if allMovies is still empty
         if (data.sections.suggestions) {
-          setAllMovies(data.sections.suggestions);
+          setAllMovies((prev) => (prev && prev.length > 0 ? prev : data.sections.suggestions));
         }
       } else {
         console.log('⚠️ Sections API failed, using individual category loading');
@@ -575,13 +582,13 @@ export default function HomePage() {
       const categoriesData: {[key: string]: Movie[]} = {};
       
       for (const category of categoryConfig) {
-                // Map category names to API categories
-                const apiCategoryMap: {[key: string]: string} = {
-                  "Suggestions": "suggestions",
-                  "Trending Now": "trending",
-                  "Top Rated": "top_rated",
-                  "TV Shows": "tv_shows"
-                };
+        // Map category names to API categories
+        const apiCategoryMap: {[key: string]: string} = {
+          "Suggestions": "suggestions",
+          "Trending Now": "trending",
+          "Top Rated": "top_rated",
+          "TV Shows": "tv_shows"
+        };
         
         const apiCategory = apiCategoryMap[category.name] || "latest";
         const response = await fetch(`/api/movies/latest?category=${apiCategory}&limit=${category.count}`);
@@ -600,11 +607,20 @@ export default function HomePage() {
         }
       }
       
-      setCategories(categoriesData);
+      // Never overwrite Suggestions if it was already set (e.g. from reference mapping)
+      setCategories((prev) => {
+        const next = { ...prev, ...categoriesData };
+        if (prev.Suggestions) {
+          next.Suggestions = prev.Suggestions;
+        }
+        return next;
+      });
       
-      // Set initial movies to suggestions
+      // Set initial movies to suggestions only if allMovies is still empty
       if (categoriesData["Suggestions"]) {
-        setAllMovies(categoriesData["Suggestions"]);
+        setAllMovies((prev) =>
+          prev && prev.length > 0 ? prev : categoriesData["Suggestions"]!
+        );
       }
     } catch (error) {
       console.error('Error loading categories individually:', error);
