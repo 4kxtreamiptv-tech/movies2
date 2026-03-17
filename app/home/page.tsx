@@ -332,7 +332,7 @@ export default function HomePage() {
   const [itemsPerRow, setItemsPerRow] = useState(12);
   const DISPLAY_COUNT = 12;
   const homeGridClass =
-    "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4";
+    "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-6 gap-4";
   
   // Mode switching state - Default to MOVIES
   const [currentMode, setCurrentMode] = useState<'movies' | 'tv'>('movies');
@@ -729,7 +729,7 @@ export default function HomePage() {
               {/* Suggestions */}
               <section>
                 <div className="mb-3">
-                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-base md:text-lg font-bold px-4 py-2 rounded">
                     Suggestions
                   </div>
                 </div>
@@ -778,7 +778,7 @@ export default function HomePage() {
               {/* Latest Movies */}
               <section>
                 <div className="mb-3">
-                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-base md:text-lg font-bold px-4 py-2 rounded">
                     Latest Movies
                   </div>
                 </div>
@@ -816,7 +816,7 @@ export default function HomePage() {
               {/* Latest TV-Series (also visible on Movies home like reference) */}
               <section>
                 <div className="mb-3">
-                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-base md:text-lg font-bold px-4 py-2 rounded">
                     Latest TV-Series
                   </div>
                 </div>
@@ -866,7 +866,7 @@ export default function HomePage() {
               {/* Latest TV-Series */}
               <section>
                 <div className="mb-3">
-                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-base md:text-lg font-bold px-4 py-2 rounded">
                     Latest TV-Series
                   </div>
                 </div>
@@ -914,7 +914,7 @@ export default function HomePage() {
               {/* Popular TV-Series */}
               <section>
                 <div className="mb-3">
-                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-base md:text-lg font-bold px-4 py-2 rounded">
                     Popular TV-Series
                   </div>
                 </div>
@@ -962,7 +962,7 @@ export default function HomePage() {
               {/* Featured TV-Series */}
               <section>
                 <div className="mb-3">
-                  <div className="inline-flex items-center bg-[#79c142] text-white text-sm font-semibold px-3 py-1 rounded">
+                  <div className="inline-flex items-center bg-[#79c142] text-white text-base md:text-lg font-bold px-4 py-2 rounded">
                     Featured TV-Series
                   </div>
                 </div>
