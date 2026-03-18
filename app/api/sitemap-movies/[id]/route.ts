@@ -4,7 +4,7 @@ import { getMovieByImdbId } from '@/api/tmdb';
 import { getBaseUrlForBuild } from '@/lib/domain';
 
 const DOMAIN = getBaseUrlForBuild();
-const MOVIES_PER_SITEMAP = 1000; // 1k per sitemap batch
+const MOVIES_PER_SITEMAP = 50000; // 50k per sitemap batch
 
 export async function GET(
   request: NextRequest,

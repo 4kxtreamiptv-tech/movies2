@@ -3,7 +3,7 @@ import { getBaseUrlForBuild } from '@/lib/domain';
 import { TV_SERIES_IDS } from '@/data/tvSeriesIds';
 
 const DOMAIN = getBaseUrlForBuild();
-const SERIES_PER_SITEMAP = 1000; // 1k per sitemap batch
+const SERIES_PER_SITEMAP = 50000; // 50k per sitemap batch
 
 const TMDB_API_KEY = 'b31d2e5f33b74ffa7b3b483ff353f760';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';

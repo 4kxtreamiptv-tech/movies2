@@ -4,7 +4,7 @@ import clientPromise from '@/lib/mongodb-client';
 import { getBaseUrlForBuild } from '@/lib/domain';
 
 const DOMAIN = getBaseUrlForBuild();
-const ITEMS_PER_SITEMAP = 1000; // 1k per sitemap
+const ITEMS_PER_SITEMAP = 50000; // 50k per sitemap
 
 export async function GET() {
   try {
